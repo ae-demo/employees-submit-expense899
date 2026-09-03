@@ -29,26 +29,26 @@ them for payroll processing.
 ## User Stories
 
 1. As an Employee, I want to submit an expense claim with an amount, category,
- date, description, and a receipt attachment, so that I can be reimbursed
- for a business expense.
+date, description, and a receipt attachment, so that I can be reimbursed
+for a business expense.
 2. As an Employee, I want to view the status of my submitted claims (pending,
- approved, rejected), so that I know where each one stands.
+approved, rejected), so that I know where each one stands.
 3. As an Employee, I want to edit or withdraw a claim while it is still
- pending, so that I can fix a mistake before my manager reviews it.
+pending, so that I can fix a mistake before my manager reviews it.
 4. As an Employee, I want to see why a claim was rejected and resubmit a
- corrected version, so that I can still get reimbursed for a valid expense.
+corrected version, so that I can still get reimbursed for a valid expense.
 5. As a Manager, I want to see a queue of the pending claims submitted by the
- employees who report to me, so that I know what needs my review.
+employees who report to me, so that I know what needs my review.
 6. As a Manager, I want to approve a pending claim, so that it becomes ready
- for finance to process through payroll.
+for finance to process through payroll.
 7. As a Manager, I want to reject a pending claim with a reason, so that the
- employee understands what needs to change.
+employee understands what needs to change.
 8. As Finance, I want to view all approved claims across the organization, so
- that I can see what is ready for payroll.
+that I can see what is ready for payroll.
 9. As Finance, I want to export approved claims as a downloadable file (e.g.
- CSV), so that I can import them into the payroll system.
+CSV), so that I can import them into the payroll system.
 10. As Finance, I want exported claims to be marked as exported, so that I
- never export the same claim twice.
+never export the same claim twice.
 
 ## Product Decisions
 
@@ -64,12 +64,12 @@ every claim they submit routes to that manager for approval.
 integration with a named payroll provider.
 - Claims support a single currency across the organization. *assumed*
 - Receipt attachments accept common image formats and PDF. *assumed*
-- Expense categories come from a fixed, predefined list (e.g. Travel, Meals,
-Lodging, Office Supplies, Other) rather than free-form text. *assumed*
+- Expense categories come from a fixed, predefined list: Travel, Meals,
+Lodging, Office Supplies, Other — rather than free-form text.
 - A rejected claim can be edited and resubmitted by the employee, re-entering
 the pending queue for the same manager. *assumed*
 - No automated notifications (email or otherwise) are sent on status changes
-in this version — actors check status by visiting the app. *assumed*
+in this version — actors check status by visiting the app.
 
 ## Out of Scope
 
