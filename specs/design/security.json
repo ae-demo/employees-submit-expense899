@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "coldStartRole": "Employee",
+  "publicComponents": [],
+  "roles": [
+    {
+      "name": "Employee",
+      "description": "Submits expense claims, attaches receipts, tracks claim status, and edits and resubmits rejected claims.",
+      "stories": [1, 2, 3, 4],
+      "grantedBy": "first sign-in",
+      "permissions": [
+        { "component": "expense-api", "actions": ["create claim", "read own claims", "update own claim"] },
+        { "component": "expense-webapp", "screens": ["My Claims", "Submit Claim", "Claim Detail"] }
+      ]
+    },
+    {
+      "name": "Manager",
+      "description": "Reviews claims submitted by their direct reports and approves or rejects each one.",
+      "stories": [5, 6, 7],
+      "grantedBy": "Admin",
+      "permissions": [
+        { "component": "expense-api", "actions": ["read reports' claims", "approve claim", "reject claim"] },
+        { "component": "expense-webapp", "screens": ["Approval Queue", "Claim Review"] }
+      ]
+    },
+    {
+      "name": "Finance",
+      "description": "Maintains employee-manager assignments, reviews approved claims, and exports them to payroll as CSV.",
+      "stories": [8, 9, 10],
+      "grantedBy": "Admin",
+      "permissions": [
+        { "component": "expense-api", "actions": ["read approved claims", "export claims"] },
+        { "component": "expense-webapp", "screens": ["Approved Claims", "Export"] }
+      ]
+    }
+  ],
+  "testUsers": [
+    { "username": "test-employee", "role": "Employee" },
+    { "username": "test-manager", "role": "Manager" },
+    { "username": "test-finance", "role": "Finance" }
+  ],
+  "thunder": {
+    "name": "Expense Claims",
+    "type": "browser",
+    "scopes": "openid profile email group ou"
+  }
+}

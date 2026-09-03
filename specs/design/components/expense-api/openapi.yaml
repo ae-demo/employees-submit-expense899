@@ -1,0 +1,327 @@
+openapi: 3.0.3
+info:
+  title: Expense Claims API
+  version: 0.1.0
+  description: Manages expense claim submission, manager approval, and finance's payroll export.
+servers:
+  - url: /
+tags:
+  - name: claims
+  - name: export
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    UserId:
+      name: X-User-Id
+      in: header
+      required: true
+      description: caller identity injected by the gateway from the validated token
+      schema: { type: string }
+    ClaimId:
+      name: claimId
+      in: path
+      required: true
+      description: expense claim identifier
+      schema: { type: string }
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: integer, description: HTTP or application error code }
+        message: { type: string, description: short human-readable label }
+        description: { type: string, description: detailed explanation }
+        moreInfo: { type: string, description: URI to documentation }
+    ExpenseClaim:
+      type: object
+      required: [id, employeeId, amount, category, dateIncurred, description, status]
+      properties:
+        id: { type: string }
+        employeeId: { type: string }
+        managerId: { type: string }
+        amount: { type: number, format: double }
+        category:
+          type: string
+          enum: [Travel, Meals, Lodging, "Office Supplies", Other]
+        dateIncurred: { type: string, format: date }
+        description: { type: string }
+        receiptUrl: { type: string, description: URL of the uploaded receipt file }
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        rejectionReason: { type: string, nullable: true }
+        exportedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ExpenseClaimCreate:
+      type: object
+      required: [amount, category, dateIncurred, description]
+      properties:
+        amount: { type: number, format: double }
+        category:
+          type: string
+          enum: [Travel, Meals, Lodging, "Office Supplies", Other]
+        dateIncurred: { type: string, format: date }
+        description: { type: string }
+        receiptUrl: { type: string }
+    RejectionInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string }
+    ReceiptUploadRequest:
+      type: object
+      required: [fileName, contentType]
+      properties:
+        fileName: { type: string }
+        contentType: { type: string }
+    ReceiptUploadUrl:
+      type: object
+      required: [uploadUrl, receiptUrl]
+      properties:
+        uploadUrl: { type: string, description: presigned PutObject URL the browser uploads directly to }
+        receiptUrl: { type: string, description: final URL to store on the claim once uploaded }
+    ExportResult:
+      type: object
+      required: [exportedCount, csv]
+      properties:
+        exportedCount: { type: integer }
+        csv: { type: string, description: CSV content of the exported claims }
+paths:
+  /expense-claims:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      operationId: listExpenseClaims
+      summary: List expense claims visible to the caller, optionally filtered
+      tags: [claims]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, approved, rejected] }
+          description: filter by claim status
+        - name: exported
+          in: query
+          schema: { type: boolean }
+          description: filter by whether the claim has been exported
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: matching expense claims
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count, data]
+                properties:
+                  count: { type: integer, description: total matching items }
+                  next: { type: string, nullable: true, description: relative URI of the next page }
+                  previous: { type: string, nullable: true, description: relative URI of the previous page }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ExpenseClaim' }
+        '401':
+          description: missing or invalid caller identity
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    post:
+      operationId: submitExpenseClaim
+      summary: Submit a new expense claim
+      tags: [claims]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExpenseClaimCreate' }
+      responses:
+        '201':
+          description: claim created in pending status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpenseClaim' }
+        '400':
+          description: invalid claim data
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /expense-claims/{claimId}:
+    parameters:
+      - $ref: '#/components/parameters/ClaimId'
+      - $ref: '#/components/parameters/UserId'
+    get:
+      operationId: getExpenseClaim
+      summary: Get one expense claim
+      tags: [claims]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: the expense claim
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpenseClaim' }
+        '404':
+          description: claim not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    put:
+      operationId: updateExpenseClaim
+      summary: Edit a pending or rejected claim and resubmit it as pending
+      tags: [claims]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExpenseClaimCreate' }
+      responses:
+        '200':
+          description: claim updated and reset to pending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpenseClaim' }
+        '400':
+          description: invalid claim data or claim not editable
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: claim not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      operationId: withdrawExpenseClaim
+      summary: Withdraw a pending claim
+      tags: [claims]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204':
+          description: claim withdrawn
+        '400':
+          description: claim is not pending and cannot be withdrawn
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: claim not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /expense-claims/{claimId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/ClaimId'
+      - $ref: '#/components/parameters/UserId'
+    post:
+      operationId: approveExpenseClaim
+      summary: Approve a pending claim submitted by one of the caller's reports
+      tags: [claims]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: claim approved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpenseClaim' }
+        '400':
+          description: claim is not pending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: caller is not the claim's manager
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: claim not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /expense-claims/{claimId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/ClaimId'
+      - $ref: '#/components/parameters/UserId'
+    post:
+      operationId: rejectExpenseClaim
+      summary: Reject a pending claim with a reason
+      tags: [claims]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectionInput' }
+      responses:
+        '200':
+          description: claim rejected
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpenseClaim' }
+        '400':
+          description: claim is not pending or reason missing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: caller is not the claim's manager
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: claim not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /expense-claims/receipt-upload-url:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    post:
+      operationId: createReceiptUploadUrl
+      summary: Get a presigned URL to upload a receipt file directly to storage
+      tags: [claims]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReceiptUploadRequest' }
+      responses:
+        '200':
+          description: presigned upload URL
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptUploadUrl' }
+        '400':
+          description: invalid file name or content type
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /expense-claims/export:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    post:
+      operationId: exportApprovedClaims
+      summary: Export unexported approved claims as CSV and mark them exported
+      tags: [export]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: CSV export of approved, previously-unexported claims
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportResult' }
+        '403':
+          description: caller is not authorized to export claims
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }

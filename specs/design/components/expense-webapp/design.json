@@ -1,0 +1,17 @@
+{
+  "name": "expense-webapp",
+  "type": "web-application",
+  "version": "0.1.0",
+  "language": "TypeScript",
+  "buildpack": "docker",
+  "appPath": "expense-webapp",
+  "entrypoint": "deployment/web-application",
+  "exposure": "internet",
+  "dependencies": [
+    { "kind": "component", "name": "expense-api" },
+    { "kind": "platform-resource", "name": "user-auth", "resourceType": "thunder-app" }
+  ],
+  "description": "Single-page app serving all three roles: employees submit and track claims and resubmit rejected ones, managers review and decide on their reports' pending claims, and finance reviews and exports approved claims to CSV. Calls expense-api for all data and never talks to receipt storage directly except via presigned URLs returned by the API. Does not implement its own sign-in — delegates to the platform identity provider.",
+  "stories": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  "skillsPinned": ["wireframes", "react-webapp", "astryx-design-system", "thunder-authentication"]
+}
